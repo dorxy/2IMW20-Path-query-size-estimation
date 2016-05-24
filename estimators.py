@@ -27,5 +27,12 @@ class BruteForce(Abstract):
         self._summary = graph
 
     def estimate(self, path):
-        # TODO implement brute force of estimation
-        return 1
+        nodes = None
+        for e in path:
+            nodes = self.subset(e, nodes)
+        return len(nodes)
+
+    def subset(self, edge, start_nodes=None):
+        if start_nodes is None:
+            return [t[2] for t in self._summary if t[1] == edge]
+        return [t[2] for t in self._summary if t[1] == edge and t[0] in start_nodes]
