@@ -36,3 +36,11 @@ class BruteForce(Abstract):
         if start_nodes is None:
             return [t[2] for t in self._summary if t[1] == edge]
         return [t[2] for t in self._summary if t[1] == edge and t[0] in start_nodes]
+
+
+class Four(Abstract):
+    def load(self, graph, k, b):
+        return
+
+    def estimate(self, path):
+        return 4
