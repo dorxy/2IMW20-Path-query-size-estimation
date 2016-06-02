@@ -29,7 +29,7 @@ verbose = False
 
 def generate_graph_summary(cli_arguments):
     # Load contents of graph data file into the estimator
-    graph = [line[:-1].split(' ') for line in cli_arguments.file]
+    graph = [line.rstrip().split(' ') for line in cli_arguments.file]
     bruteForce.load(graph, cli_arguments.k, cli_arguments.b)
 
     ts = dt.datetime.now().microsecond
@@ -40,11 +40,15 @@ def generate_graph_summary(cli_arguments):
 
 def process_line(line, output=False):
     # Read the line into a path
-    path = line.split(' ')
+    path = line.strip().split(' ')
     if len(path) == 0:
         if verbose:
             print 'Skipping badly formatted line: %s' % line
         return
+
+    # Turn list into list of tuples
+    it = iter(path)
+    path = zip(it, it)
 
     # Estimate and time
     ts = dt.datetime.now().microsecond
@@ -101,6 +105,8 @@ if __name__ == "__main__":
         raise RuntimeError('No estimator instantiated')
 
     # Generate the graph summary
+    if verbose:
+        print '# Starting graph summary generation'
     generate_graph_summary(args)
 
     if verbose:
