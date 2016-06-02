@@ -4,7 +4,6 @@ import argparse
 import estimators
 import time
 import sys
-import datetime as dt
 
 # Set up command line argument parser
 parser = argparse.ArgumentParser(description="Estimate result size of path queries on a graph by computing a summary.\n"
@@ -32,10 +31,10 @@ def generate_graph_summary(cli_arguments):
     graph = [line.rstrip().split(' ') for line in cli_arguments.file]
     bruteForce.load(graph, cli_arguments.k, cli_arguments.b)
 
-    ts = dt.datetime.now().microsecond
+    ts = time.time()
     estimator.load(graph, cli_arguments.k, cli_arguments.b)
-    graph_summary_time = dt.datetime.now().microsecond - ts
-    print "# Graph summary generation\n%s\tmicroseconds\n%s\tbytes" % (graph_summary_time, sys.getsizeof(estimator.summary()))
+    graph_summary_time = max(0, (time.time() - ts)) * 1000
+    print "# Graph summary generation bonus\n%s\tmilliseconds\n%s\tbytes" % (graph_summary_time, sys.getsizeof(estimator.summary()))
 
 
 def process_line(line, output=False):
@@ -51,10 +50,10 @@ def process_line(line, output=False):
     path = zip(it, it)
 
     # Estimate and time
-    ts = dt.datetime.now().microsecond
+    ts = time.time()
     estimation = estimator.estimate(path)
-    estimation_time = dt.datetime.now().microsecond - ts
-    estimation_times.append(estimation_time)
+    estimation_time = time.time() - ts
+    estimation_times.append(max(0, estimation_time) * 1000)
 
     # Determine the accuracy
     actual_result = bruteForce.estimate(path)
@@ -65,7 +64,7 @@ def process_line(line, output=False):
     estimation_accuracies.append(accuracy)
 
     if verbose or output:
-        print "%s\t%s\t%s\t%s\t%s" % (line, estimation, actual_result, accuracy, estimation_time)
+        print "%s\t%s\t%s\t%s\t%s" % (line, estimation, actual_result, accuracy, estimation_time * 1000)
 
     return True
 
@@ -118,7 +117,7 @@ if __name__ == "__main__":
     average_times = (sum(estimation_times) / float(len(estimation_times))) if len(estimation_times) > 0 else 0
     average_accuracy = (sum(estimation_accuracies) / float(len(estimation_accuracies))) if len(estimation_accuracies) > 0 else 0
 
-    print "# Average of estimations\n%s\t microseconds\n%s\taccuracy" % (average_times, average_accuracy)
+    print "# Average of estimations\n%s\t milliseconds\n%s\taccuracy" % (average_times, average_accuracy)
 
 else:
     raise RuntimeError('This file can only be run as a top-level script')
