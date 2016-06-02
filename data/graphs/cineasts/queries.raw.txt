@@ -1,0 +1,171 @@
+------------------------
+--- Cineasts Dataset ---
+------------------------
+
+	------------------
+	--- graph size ---
+	------------------
+		╒═════╤══════╕
+		│nodes│rels  │
+		╞═════╪══════╡
+		│63042│106651│
+		└─────┴──────┘
+		╒════════╤════════╕
+		│rel type│count   │
+		╞════════╪════════╡
+		│RATED   │30      │
+		├────────┼────────┤
+		│FRIEND  │6       │
+		├────────┼────────┤
+		│ACTS_IN │94700   │
+		├────────┼────────┤
+		│DIRECTED│11915   │
+		└────────┴────────┘
+
+	----------------------------
+	---- relationship types ----
+	----------------------------
+		╒════════╤════════╕
+		│type    │type id │
+		╞════════╪════════╡
+		│RATED   │1       │
+		├────────┼────────┤
+		│FRIEND  │2       │
+		├────────┼────────┤
+		│ACTS_IN │3       │
+		├────────┼────────┤
+		│DIRECTED│4       │
+		└────────┴────────┘
+
+	-------------------------
+	--- import into Neo4j ---
+	-------------------------
+		CREATE CONSTRAINT ON (n:Thing) ASSERT n.id IS UNIQUE
+
+		LOAD CSV FROM 'file:///cineasts.csv' AS line FIELDTERMINATOR ' '
+		WITH line[0] AS startId, line[1] AS relType, line[2] AS endId 
+		MERGE (startNode:Thing {id:startId})
+		MERGE (endNode:Thing {id:endId})
+		FOREACH(_ IN (CASE relType WHEN "1" THEN [null] ELSE [] END) | CREATE (startNode)-[:RATED]->(endNode))
+		FOREACH(_ IN (CASE relType WHEN "2" THEN [null] ELSE [] END) | CREATE (startNode)-[:FRIEND]->(endNode))
+		FOREACH(_ IN (CASE relType WHEN "3" THEN [null] ELSE [] END) | CREATE (startNode)-[:ACTS_IN]->(endNode))
+		FOREACH(_ IN (CASE relType WHEN "4" THEN [null] ELSE [] END) | CREATE (startNode)-[:DIRECTED]->(endNode))
+
+	--------------
+	--- method ---
+	--------------
+		// usually
+		MATCH (a)<relationship>(b)
+		MATCH (b)<relationship>(c)
+		MATCH (c)<relationship>(d)
+		WITH DISTINCT a, d
+		RETURN count(*)
+
+		// symmetric patterns
+		MATCH (a)<relationship>(b)
+		MATCH (b)<relationship>(c)
+		MATCH (c)<relationship>(d)
+		WHERE id(a)>id(b)
+		WITH DISTINCT a, d
+		RETURN count(*)
+
+	-------------
+	--- k = 1 ---
+	-------------
+		()-[:ACTS_IN]->()
+		94,700
+
+		()-[:RATED]->()
+		30
+
+		()-[:FRIEND]->()
+		6
+
+		()-[:DIRECTED]->()
+		11,915
+	-------------
+	--- k = 2 ---
+	-------------
+		()-[:FRIEND]->()-[:RATED]->()
+		8
+
+		()<-[:FRIEND]-()-[:RATED]->()
+		17
+
+		()-[:FRIEND]->()-[:FRIEND]->()
+		1
+
+		()<-[:ACTS_IN]-()-[:ACTS_IN]->()
+		258,590
+
+		()-[:ACTS_IN]->()<-[:ACTS_IN]-()
+		543,746
+
+		()-[:ACTS_IN]->()-[:ACTS_IN]->()
+		0
+
+		()-[:FRIEND]->()<-[:RATED]-()
+		0
+	-------------
+	--- k = 3 ---
+	-------------
+		()-[:FRIEND]->()-[:RATED]->()<-[:RATED]-()
+		26
+
+		()-[:FRIEND]->()<-[:FRIEND]-()-[:RATED]->()
+		13
+	
+		()-[:FRIEND]->()-[:FRIEND]->()-[:RATED]->()
+		2
+
+		()-[:FRIEND]->()-[:DIRECTED]->()<-[:RATED]-()
+		0
+
+		()-[:FRIEND]->()-[:RATED]->()<-[:DIRECTED]-()
+		9
+
+		()-[:RATED]->()<-[:DIRECTED]-()-[:DIRECTED]->()
+		194
+
+		()-[:ACTS_IN]->()<-[:DIRECTED]-()-[:ACTS_IN]->()
+		116,691
+
+		()-[:ACTS_IN]->()<-[:ACTS_IN]-()-[:ACTS_IN]->()
+		4,549,931
+
+		()-[:DIRECTED]->()<-[:DIRECTED]-()-[:DIRECTED]->()
+		18,537
+	-------------
+	--- k = 4 ---
+	-------------
+		()-[:DIRECTED]->()<-[:DIRECTED]-()-[:DIRECTED]->()<-[:DIRECTED]-()
+		2556
+
+		()-[:ACTS_IN]->()<-[:ACTS_IN]-()-[:ACTS_IN]->()<-[:ACTS_IN]-()
+		17,692,974
+
+		()-[:RATED]->()<-[:DIRECTED]-()-[:DIRECTED]->()<-[:ACTS_IN]-()
+		1,748
+
+		()-[:RATED]->()<-[:ACTS_IN]-()-[:DIRECTED]->()<-[:ACTS_IN]-()
+		358
+
+		()-[:RATED]->()<-[:ACTS_IN]-()-[:ACTS_IN]->()<-[:ACTS_IN]-()
+		23,116
+	-------------
+	--- k = 5 ---
+	-------------
+		()-[:DIRECTED]->()<-[:DIRECTED]-()-[:DIRECTED]->()<-[:DIRECTED]-()-[:DIRECTED]->()
+		21,373
+
+		()-[:DIRECTED]->()<-[:ACTS_IN]-()-[:DIRECTED]->()<-[:ACTS_IN]-()-[:DIRECTED]->()
+		18,959
+
+		()-[:DIRECTED]->()<-[:ACTS_IN]-()<-[:DIRECTED]-()<-[:ACTS_IN]-()-[:DIRECTED]->()
+		0
+
+		()-[:RATED]->()<-[:ACTS_IN]-()-[:DIRECTED]->()<-[:ACTS_IN]-()-[:DIRECTED]->()
+		67
+
+		()-[:FRIEND]->()-[:RATED]->()-[:DIRECTED]->()<-[:ACTS_IN]-()-[:DIRECTED]->()
+		0

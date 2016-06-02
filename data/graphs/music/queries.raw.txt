@@ -1,0 +1,197 @@
+-------------------------------
+--- Generated Music Dataset ---
+-------------------------------
+
+	------------------
+	--- graph size ---
+	------------------
+		╒══════╤══════╕
+		│nodes │rels  │
+		╞══════╪══════╡
+		│113754│136800│
+		└──────┴──────┘
+		╒════════════╤════════╕
+		│rel type    │count   │
+		╞════════════╪════════╡
+		│IN          │1000    │
+		├────────────┼────────┤
+		│WORKED_WITH │2100    │
+		├────────────┼────────┤
+		│APPEARS_ON  │105000  │
+		├────────────┼────────┤
+		│CREATED     │7000    │
+		├────────────┼────────┤
+		│PERFORMED_AT│21000   │
+		├────────────┼────────┤
+		│SIGNED_WITH │700     │
+		└────────────┴────────┘
+
+	----------------------------
+	---- relationship types ----
+	----------------------------
+		╒════════════╤════════╕
+		│type        │type id │
+		╞════════════╪════════╡
+		│IN          │ 1      │
+		├────────────┼────────┤
+		│WORKED_WITH │ 2      │
+		├────────────┼────────┤
+		│APPEARS_ON  │ 3      │
+		├────────────┼────────┤
+		│CREATED     │ 4      │
+		├────────────┼────────┤
+		│PERFORMED_AT│ 5      │
+		├────────────┼────────┤
+		│SIGNED_WITH │ 6      │
+		└────────────┴────────┘
+
+	-------------------------
+	--- import into Neo4j ---
+	-------------------------
+		CREATE CONSTRAINT ON (n:Thing) ASSERT n.id IS UNIQUE
+
+		LOAD CSV FROM 'file:///generatedmusicdata.csv' AS line FIELDTERMINATOR ' '
+		WITH line[0] AS startId, line[1] AS relType, line[2] AS endId 
+		MERGE (startNode:Thing {id:startId})
+		MERGE (endNode:Thing {id:endId})
+		FOREACH(_ IN (CASE relType WHEN "1" THEN [null] ELSE [] END) | CREATE (startNode)-[:IN]->(endNode))
+		FOREACH(_ IN (CASE relType WHEN "2" THEN [null] ELSE [] END) | CREATE (startNode)-[:WORKED_WITH]->(endNode))
+		FOREACH(_ IN (CASE relType WHEN "3" THEN [null] ELSE [] END) | CREATE (startNode)-[:APPEARS_ON]->(endNode))
+		FOREACH(_ IN (CASE relType WHEN "4" THEN [null] ELSE [] END) | CREATE (startNode)-[:CREATED]->(endNode))
+		FOREACH(_ IN (CASE relType WHEN "5" THEN [null] ELSE [] END) | CREATE (startNode)-[:PERFORMED_AT]->(endNode))
+		FOREACH(_ IN (CASE relType WHEN "6" THEN [null] ELSE [] END) | CREATE (startNode)-[:SIGNED_WITH]->(endNode))
+
+	--------------
+	--- method ---
+	--------------
+		// usually
+		MATCH (a)<relationship>(b)
+		MATCH (b)<relationship>(c)
+		MATCH (c)<relationship>(d)
+		WITH DISTINCT a, d
+		RETURN count(*)
+
+		// symmetric patterns
+		MATCH (a)<relationship>(b)
+		MATCH (b)<relationship>(c)
+		MATCH (c)<relationship>(d)
+		WHERE id(a)>id(b)
+		WITH DISTINCT a, d
+		RETURN count(*)
+
+	-------------
+	--- k = 1 ---
+	-------------
+		()-[:IN]->()
+		1,000
+
+		()-[:WORKED_WITH]->()
+		2,100
+
+		()-[:APPEARS_ON]->()
+		105,000
+
+		()-[:CREATED]->()
+		7,000
+
+		()-[:PERFORMED_AT]->()
+		21,000
+
+		()-[:SIGNED_WITH]->()
+		700
+	-------------
+	--- k = 2 ---
+	-------------
+		()-[:CREATED]->()<-[:APPEARS_ON]-()
+		105,000
+
+		()<-[:SIGNED_WITH]-()<-[:WORKED_WITH]-()
+		1,264
+
+		()<-[:SIGNED_WITH]-()-[:PERFORMED_AT]->()
+		3,285
+
+		()-[:PERFORMED_AT]->()<-[:PERFORMED_AT]-()
+		149,673
+		149,673
+
+		()<-[:IN]-()<-[:PERFORMED_AT]-()
+		15,997
+
+		()<-[:WORKED_WITH]-()<-[:WORKED_WITH]-()
+		6,275
+		6,278
+
+		()-[:WORKED_WITH]->()<-[:WORKED_WITH]-()
+		2,083
+		2,083
+
+		()-[:WORKED_WITH]->()<-[:APPEARS_ON]-()
+		0
+
+		()-[:IN]->()<-[:PERFORMED_AT]-()
+		0
+	-------------
+	--- k = 3 ---
+	-------------
+		()<-[:SIGNED_WITH]-()<-[:WORKED_WITH]-()<-[:WORKED_WITH]-()
+		1,768
+		1,768
+
+		()-[:PERFORMED_AT]->()<-[:PERFORMED_AT]-()<-[:WORKED_WITH ]-()
+		408,447
+		408,810
+	
+		()-[:WORKED_WITH]->()-[:WORKED_WITH]->()-[:WORKED_WITH]->()
+		18,464
+		18,498
+
+		()-[:APPEARS_ON]->()<-[:CREATED]-()-[:SIGNED_WITH]->()
+		105,000
+		105,000
+
+		()<-[:CREATED]-()<-[:WORKED_WITH]-()-[:SIGNED_WITH]->()
+		14,330
+
+		()<-[:CREATED]-()<-[:CREATED]-()-[:SIGNED_WITH]->()
+		0
+		0
+	-------------
+	--- k = 4 ---
+	-------------
+		()-[:APPEARS_ON]->()<-[:CREATED]-()<-[:WORKED_WITH]-()-[:SIGNED_WITH]->()
+		214,950
+
+		()-[:CREATED]->()<-[:CREATED]-()<-[:WORKED_WITH]-()-[:SIGNED_WITH]->()
+		0
+		1,433
+
+		()<-[:CREATED]-()-[:PERFORMED_AT]->()<-[:PERFORMED_AT]-()-[:SIGNED_WITH]->()
+		28,000
+		28,000
+
+		()<-[:WORKED_WITH]-()-[:PERFORMED_AT]->()<-[:PERFORMED_AT]-()-[:SIGNED_WITH]->()
+		2,800
+		2,800
+	-------------
+	--- k = 5 ---
+	-------------
+		()-[:APPEARS_ON]->()<-[:CREATED]-()-[:PERFORMED_AT]->()<-[:PERFORMED_AT]-()-[:SIGNED_WITH]->()
+		420,000
+		420,000
+
+		()<-[:WORKED_WITH]-()<-[:WORKED_WITH]-()-[:PERFORMED_AT]->()<-[:PERFORMED_AT]-()-[:SIGNED_WITH]->()
+		2,800
+		2,800
+
+		()<-[:SIGNED_WITH]-()<-[:WORKED_WITH]-()-[:PERFORMED_AT]->()<-[:PERFORMED_AT]-()-[:SIGNED_WITH]->()
+		16
+		16
+
+		()<-[:CREATED]-()<-[:WORKED_WITH]-()-[:PERFORMED_AT]->()<-[:PERFORMED_AT]-()-[:SIGNED_WITH]->()
+		16
+		28,000
+
+		()<-[:IN]-()<-[:WORKED_WITH]-()-[:PERFORMED_AT]->()<-[:PERFORMED_AT]-()-[:SIGNED_WITH]->()
+		0
+		0

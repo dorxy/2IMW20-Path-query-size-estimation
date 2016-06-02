@@ -1,95 +1,246 @@
-//    edge ID: human-readable-version
-//    0: authors (i.e., an author “authors” a paper)
-//    1: publishedIn (i.e., a paper is “publishedIn” a conference)
-//    2: heldIn (i.e., a conference is “heldIn” a city)
-//    3: extendedTo (i.e., a paper is “extendedTo” a journal paper)
-//    4: cites (i.e., a paper “cites” another paper)
-//    5: knows (i.e., an author “knows” another author)
+-------------------------------
+-------- Biblio Dataset -------
+-------------------------------
 
-// node count
-MATCH (a) RETURN count(*) == 837
+	------------------
+	--- graph size ---
+	------------------
+		╒══════╤══════╕
+		│nodes │rels  │
+		╞══════╪══════╡
+		│837   │1499  │
+		└──────┴──────┘
+		╒════════════╤═════╕
+		│rel type    │count│
+		╞════════════╪═════╡
+		│CITES       │193  │
+		├────────────┼─────┤
+		│PUBLISHED_IN│300  │
+		├────────────┼─────┤
+		│AUTHORS     │482  │
+		├────────────┼─────┤
+		│EXTENDED_TO │100  │
+		├────────────┼─────┤
+		│KNOWS       │367  │
+		├────────────┼─────┤
+		│HELD_IN     │57   │
+		└────────────┴─────┘		
 
-// relationship count
-MATCH ()-[r]->() RETURN count(*) == 1499
+	----------------------------
+	---- relationship types ----
+	----------------------------
+		//    0: authors (i.e., an author “authors” a paper)
+		//    1: publishedIn (i.e., a paper is “publishedIn” a conference)
+		//    2: heldIn (i.e., a conference is “heldIn” a city)
+		//    3: extendedTo (i.e., a paper is “extendedTo” a journal paper)
+		//    4: cites (i.e., a paper “cites” another paper)
+		//    5: knows (i.e., an author “knows” another author)
+		╒═════════════╤════════╕
+		│type         │type id │
+		╞═════════════╪════════╡
+		│AUTHORS      │ 0      │
+		├─────────────┼────────┤
+		│PUBLISHED_IN │ 1      │
+		├─────────────┼────────┤
+		│HELD_IN      │ 2      │
+		├─────────────┼────────┤
+		│EXTENDED_TO  │ 3      │
+		├─────────────┼────────┤
+		│CITES        │ 4      │
+		├─────────────┼────────┤
+		│KNOWS        │ 5      │
+		└─────────────┴────────┘
 
-// relationships by type
-MATCH ()-[r]->()
-RETURN type(r), count(*)
-// type(r)	count(*)
-// ----------
-// EXTENDED_IN	100
-// CITES	193
-// PUBLISHED_IN	300
-// AUTHORS	482
-// KNOWS	367
-// HELD_IN	57
+	----------------------------
+	----- Load into Neo4j ------
+	----------------------------
 
-// queries, first in cypher, then in terms of path query with actual cardinalities
+		LOAD CSV FROM 'file:///biblio.txt' AS line FIELDTERMINATOR ' '
+		WITH line[0] AS startId, line[1] AS relType, line[2] AS endId 
+		MERGE (startNode {id:startId})
+		MERGE (endNode {id:endId})
+		FOREACH(_ IN (CASE relType WHEN "0" THEN [null] ELSE [] END) | CREATE (startNode)-[:AUTHORS]->(endNode))
+		FOREACH(_ IN (CASE relType WHEN "1" THEN [null] ELSE [] END) | CREATE (startNode)-[:PUBLISHED_IN]->(endNode))
+		FOREACH(_ IN (CASE relType WHEN "2" THEN [null] ELSE [] END) | CREATE (startNode)-[:HELD_IN]->(endNode))
+		FOREACH(_ IN (CASE relType WHEN "3" THEN [null] ELSE [] END) | CREATE (startNode)-[:EXTENDED_TO]->(endNode))
+		FOREACH(_ IN (CASE relType WHEN "4" THEN [null] ELSE [] END) | CREATE (startNode)-[:CITES]->(endNode))
+		FOREACH(_ IN (CASE relType WHEN "5" THEN [null] ELSE [] END) | CREATE (startNode)-[:KNOWS]->(endNode))
 
-MATCH (a)-[:AUTHORS]->(b) RETURN count(*)
-//        0  == 482
-// i.e., the path query (0) has result size 482 
+	--------------
+	--- method ---
+	--------------
+		// usually
+		MATCH (a)<relationship>(b)
+		MATCH (b)<relationship>(c)
+		MATCH (c)<relationship>(d)
+		WITH DISTINCT a, d
+		RETURN count(*)
 
-MATCH (a)-[:CITES]->(b) RETURN count(*)
-//        4 == 192
+		// symmetric patterns
+		MATCH (a)<relationship>(b)
+		MATCH (b)<relationship>(c)
+		MATCH (c)<relationship>(d)
+		WHERE id(a)>id(b)
+		WITH DISTINCT a, d
+		RETURN count(*)
 
-MATCH (a)-[:KNOWS]->(b) RETURN count(*)
-//        5 == 367
+	--------------------------------
+	----- Cardinalities -----
+	--------------------------------
 
-MATCH (a)-[:KNOWS]->(b)-[:AUTHORS]->(c) RETURN count(*)
-//        5/0 == 226
-// i.e., the path query (5,0) has result size 226 
+format: Neo4j cypher syntax, project syntax, cardinality
 
-MATCH (a)-[:KNOWS]->(b)-[:KNOWS]->(c)-[:AUTHORS]->(d) RETURN count(*)
-//        5/5/0 == 53
+		-------------
+		--- k = 1 ---
+		-------------
+			()-[:AUTHORS]->()
+            + 0
+			482
 
-MATCH (a)-[:AUTHORS]->(b)-[:CITES]->(c) RETURN count(*)
-//        0/4 == 330
+			()-[:CITES]->()
+            + 4
+			192
 
-MATCH (a)-[:AUTHORS]->(b)-[:CITES]->(c)-[:CITES]->(d) RETURN count(*)
-//        0/4/4 == 171
+			()-[:KNOWS]->()
+            + 5
+			366
 
-MATCH (a)-[:AUTHORS]->(b)-[:PUBLISHED_IN]->(c) RETURN count(*)
-//        0/1 == 482
+		-------------
+		--- k = 2 ---
+		-------------
+			()-[:KNOWS]->()-[:AUTHORS]->()
+            + 5 + 0
+			216
 
-MATCH (a)-[:AUTHORS]->(b)-[:PUBLISHED_IN]->(c)-[:HELD_IN]->(d) RETURN count(*)
-//        0/1/2 == 256
+			()-[:AUTHORS]->()<-[:CITES]-()
+            + 0 - 4
+			275
 
-MATCH (a)-[:AUTHORS]->(b)-[:CITES]->(c)-[:PUBLISHED_IN]->(d) RETURN count(*)
-//        0/4/1 == 330
+			()-[:AUTHORS]->()-[:PUBLISHED_IN]->()
+            + 0 + 1
+			482
 
-MATCH (a)-[:AUTHORS]->(b)-[:CITES]->(c)-[:PUBLISHED_IN]->(d)-[:HELD_IN]->(e) RETURN count(*)
-//        0/4/1/2 == 160
+			()<-[:PUBLISHED_IN]-()-[:EXTENDED_TO]->()
+            - 1 + 3
+			93
 
-MATCH (a)-[:KNOWS]->(b)-[:AUTHORS]->(c)-[:PUBLISHED_IN]->(d)-[:HELD_IN]->(e) RETURN count(*)
-//        5/0/1/2 == 75
+			()-[:PUBLISHED_IN]->()-[:HELD_IN]->()
+            + 1 + 2
+			155
 
-MATCH (a)-[:KNOWS]->(b)-[:AUTHORS]->(c)-[:CITES]->(d)-[:PUBLISHED_IN]->(e)-[:HELD_IN]->(f) RETURN count(*)
-//        5/0/4/1/2 == 71
+			()-[:EXTENDED_TO]->()-[:PUBLISHED_IN]->()
+            + 3 + 1
+			0
 
-MATCH (a)-[:KNOWS]->(b)-[:AUTHORS]->(c)-[:EXTENDED_IN]->(d) RETURN count(*)
-//        5/0/3 == 40
+			()<-[:EXTENDED_TO]-()<-[:HELD_IN]-()
+            - 3 - 2
+			0   note: the path + 2 + 3 will have the same cardinality
 
-MATCH (a)-[:KNOWS]->(b)-[:AUTHORS]->(c)-[:CITES]->(d)-[:EXTENDED_IN]->(e) RETURN count(*)
-//        5/0/4/3 == 49
+			()-[:EXTENDED_TO]->()<-[:HELD_IN]-()
+            + 3 - 2
+			0 
 
-MATCH (a)-[:KNOWS]->(b)-[:AUTHORS]->(c)-[:CITES]->(d)-[:PUBLISHED_IN]->(e)-[:HELD_IN]->(f) RETURN count(*)
-//        5/0/4/1/2 == 71
+			()<-[:EXTENDED_TO]-()<-[:AUTHORS]-()
+            - 3 - 0
+			118   note: the path + 0 + 3 will have the same cardinality
 
-MATCH (a)-[:PUBLISHED_IN]->(b)-[:EXTENDED_IN]->(c) RETURN count(*)
-//        1/3 == 0
+		-------------
+		--- k = 3 ---
+		-------------
+			()<-[:KNOWS]-()-[:KNOWS]->()-[:AUTHORS]->()
+            - 5 + 5 + 0
+			220
 
-MATCH (a)-[:PUBLISHED_IN]->(b)-[:HELD_IN]->(c) RETURN count(*)
-//        1/2 == 155
+			()-[:AUTHORS]->()-[:CITES]->()<-[:CITES]-()
+            + 0 + 4 - 4
+			1456
 
-MATCH (a)-[:EXTENDED_IN]->(b)-[:PUBLISHED_IN]->(c) RETURN count(*)
-//        3/1 == 0
+			()-[:AUTHORS]->()-[:PUBLISHED_IN]->()-[:HELD_IN]->()
+            + 0 + 1 + 2
+			151
 
-MATCH (a)-[:EXTENDED_IN]->(b)-[:HELD_IN]->(c) RETURN count(*)
-//        3/2 = 0
+			()-[:AUTHORS]->()<-[:CITES]-()-[:PUBLISHED_IN]->()
+            + 0 - 4 + 1
+			260
 
-MATCH (a)-[:EXTENDED_IN]->(b)-[:AUTHORS]->(c) RETURN count(*)
-//        3/0 == 0
+			()-[:AUTHORS]->()-[:CITES]->()-[:PUBLISHED_IN]->()
+            + 0 + 4 + 1
+			284
 
-MATCH (a)-[:EXTENDED_IN]->(b)-[:CITES]->(c)-[:AUTHORS]->(d) RETURN count(*)
-//        3/4/0 == 0
+			()<-[:KNOWS]-()-[:AUTHORS]->()-[:EXTENDED_TO]->()
+            - 5 + 0 + 3
+			70
+
+			()<-[:EXTENDED_TO]-()-[:CITES]->()<-[:AUTHORS]-()
+            - 3 + 4 - 0
+			64
+
+			()<-[:EXTENDED_TO]-()<-[:CITES]-()<-[:AUTHORS]-()
+            - 3 - 4 - 0
+			85  note: the path + 0 + 4 + 3 will have the same cardinality
+
+			()-[:EXTENDED_TO]->()<-[:CITES]-()<-[:AUTHORS]-()
+            + 3 - 4 - 0
+			0
+
+            ()-[:AUTHORS]->()-[:EXTENDED_TO]->()-[:HELD_IN]->()
+            + 0 + 3 + 2
+            0
+
+            ()-[:KNOWS]->()-[:KNOWS]->()-[:CITES]->()
+            + 5 + 5 + 4
+            0
+
+		-------------
+		--- k = 4 ---
+		-------------
+			()-[:AUTHORS]->()<-[:CITES]-()-[:PUBLISHED_IN]->()-[:HELD_IN]->()
+            + 0 - 4 + 1 + 2
+			87
+
+			()-[:KNOWS]->()-[:AUTHORS]->()-[:PUBLISHED_IN]->()-[:HELD_IN]->()
+            + 5 + 0 + 1 + 2
+			51
+
+			()<-[:KNOWS]-()-[:AUTHORS]->()<-[:CITES]-()-[:EXTENDED_TO]->()
+            - 5 + 0 - 4 + 3
+			32
+
+            ()-[:KNOWS]->()-[:AUTHORS]->()-[:EXTENDED_TO]->()-[:HELD_IN]->()
+            + 5 + 0 + 3 + 2
+            0
+
+            ()-[:KNOWS]->()-[:KNOWS]->()-[:KNOWS]->()-[:CITES]->()
+            + 5 + 5 + 5 + 4
+            0
+
+		-------------
+		--- k = 5 ---
+		-------------
+			()-[:KNOWS]->()-[:AUTHORS]->()<-[:CITES]-()-[:PUBLISHED_IN]->()-[:HELD_IN]->()
+            + 5 + 0 - 4 + 1 + 2
+			38
+
+			()<-[:KNOWS]-()-[:AUTHORS]->()-[:CITES]->()-[:PUBLISHED_IN]->()<-[:PUBLISHED_IN]-()
+            - 5 + 0 + 4 + 1 - 1
+			561
+
+            ()<-[:KNOWS]-()-[:AUTHORS]->()-[:CITES]->()-[:PUBLISHED_IN]->()-[:PUBLISHED_IN]->()
+            - 5 + 0 + 4 + 1 + 1
+            0
+
+			()-[:KNOWS]->()-[:AUTHORS]->()-[:CITES]->()-[:PUBLISHED_IN]->()-[:PUBLISHED_IN]->()
+            + 5 + 0 + 4 + 1 + 1
+			0
+
+            ()-[:KNOWS]->()-[:AUTHORS]->()-[:CITES]->()-[:EXTENDED_TO]->()-[:HELD_IN]->()
+            + 5 + 0 + 4 + 3 + 2
+            0
+
+            ()-[:KNOWS]->()-[:KNOWS]->()-[:KNOWS]->()-[:KNOWS]->()-[:CITES]->()
+            + 5 + 5 + 5 + 5 + 4
+            0
+
+            ()-[:KNOWS]->()-[:KNOWS]->()-[:KNOWS]->()-[:CITES]->()-[:CITES]->()
+            + 5 + 5 + 5 + 4 + 4
+            0
