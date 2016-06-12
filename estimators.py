@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from itertools import combinations
 
 
 # Abstract class for estimators, each estimator
@@ -67,3 +68,58 @@ class Four(Abstract):
 
     def estimate(self, path):
         return 4
+
+
+class Average(Abstract):
+    _summary = dict()
+
+    def load(self, graph, k, b):
+        paths = self.all_paths(graph, k)
+        bf = BruteForce()
+        bf.load(graph, k, b)
+        self.initialize_summary(graph, k)
+        self.save_averages(paths, bf)
+
+    def initialize_summary(self, graph, k):
+        self._summary = dict()
+        self._summary['s'] = dict()
+        self._summary['e'] = dict()
+        self._summary['l'] = dict()
+        for i in self.relations(graph):
+            self._summary['s'][i] = []
+            self._summary['e'][i] = []
+        for i in range(1, k + 1):
+            self._summary['l'][i] = []
+
+    def average_summary(self):
+        for key, value in self._summary.iteritems():
+            for k, v in value.iteritems():
+                self._summary[key][k] = sum(self._summary[key][k]) / len(self._summary[key][k])
+
+    def save_averages(self, paths, bf):
+        for i in paths:
+            forward = [('+', x) for x in i]
+            exact = bf.estimate(forward)
+            self._summary['s'][i[0]].append(exact)
+            self._summary['e'][i[-1]].append(exact)
+            self._summary['l'][len(i)].append(exact)
+        self.average_summary()
+
+    def relations(self, graph):
+        # Determine all types of relations present in the graph
+        return set([t[1] for t in graph])
+
+    def all_paths(self, graph, k):
+        r = list(self.relations(graph))
+        combs = []
+        for i in range(1, k + 1):  # all forward paths
+            combs.extend([list(x) for x in combinations(r, i)])
+        return combs
+
+    def estimate(self, path):
+        if len(path) not in self._summary['l']:
+            raise Exception('This length has not been summarized!')
+        try:
+            return (self._summary['s'][path[0][1]] + self._summary['e'][path[-1][1]] + self._summary['l'][len(path)]) / 3
+        except KeyError:
+            return 0
