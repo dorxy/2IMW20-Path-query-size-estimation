@@ -96,13 +96,13 @@ class Language(Abstract):
                                 forward[('-', t2[1])] = 1.0 / counts[type]
                         if t2[0] == t1[0]:
                             # Backward, Forward
-                            if ('+', t2[1]) in forward:
+                            if ('+', t2[1]) in backward:
                                 backward[('+', t2[1])] += 1.0 / counts[type]
                             else:
                                 backward[('+', t2[1])] = 1.0 / counts[type]
                         if t2[2] == t1[0]:
                             # Backward, Backward
-                            if ('-', t2[1]) in forward:
+                            if ('-', t2[1]) in backward:
                                 backward[('-', t2[1])] += 1.0 / counts[type]
                             else:
                                 backward[('-', t2[1])] = 1.0 / counts[type]
@@ -111,8 +111,14 @@ class Language(Abstract):
         self._summary['table'] = table
 
     def estimate(self, path):
+        if path[0][1] not in self._summary['counts']:
+            return 0
         total = self._summary['counts'][path[0][1]]
         for i in range(1, len(path)):
+            if total == 0:
+                return total
+            if path[i] not in self._summary['table'][path[i - 1]]:
+                return 0
             total *= self._summary['table'][path[i - 1]][path[i]]
         return total
 
