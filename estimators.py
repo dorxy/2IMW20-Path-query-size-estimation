@@ -62,6 +62,61 @@ class BruteForce(Abstract):
         return [(t[2], t[0]) for t in self._summary if t[1] == edge and t[2] in nodes]
 
 
+class Language(Abstract):
+    def load(self, graph, k, b):
+        self._summary = dict()
+        # Find and count all edge types
+        counts = dict()
+        for n in graph:
+            if n[1] in counts:
+                counts[n[1]] += 1
+            else:
+                counts[n[1]] = 1
+        self._summary['counts'] = counts
+
+        # Calculate potential follow-up edges, taking the edges both forward and backward
+        table = dict()
+        for type in counts:
+            forward = dict()
+            backward = dict()
+            for t1 in graph:
+                if t1[1] == type:
+                    for t2 in graph:
+                        if t2[0] == t1[2]:
+                            # Forward, Forward
+                            if ('+', t2[1]) in forward:
+                                forward[('+', t2[1])] += 1.0 / counts[type]
+                            else:
+                                forward[('+', t2[1])] = 1.0 / counts[type]
+                        if t2[2] == t1[2]:
+                            # Forward, Backward
+                            if ('-', t2[1]) in forward:
+                                forward[('-', t2[1])] += 1.0 / counts[type]
+                            else:
+                                forward[('-', t2[1])] = 1.0 / counts[type]
+                        if t2[0] == t1[0]:
+                            # Backward, Forward
+                            if ('+', t2[1]) in forward:
+                                backward[('+', t2[1])] += 1.0 / counts[type]
+                            else:
+                                backward[('+', t2[1])] = 1.0 / counts[type]
+                        if t2[2] == t1[0]:
+                            # Backward, Backward
+                            if ('-', t2[1]) in forward:
+                                backward[('-', t2[1])] += 1.0 / counts[type]
+                            else:
+                                backward[('-', t2[1])] = 1.0 / counts[type]
+            table[('+', type)] = forward
+            table[('-', type)] = backward
+        self._summary['table'] = table
+
+    def estimate(self, path):
+        total = self._summary['counts'][path[0][1]]
+        for i in range(1, len(path)):
+            total *= self._summary['table'][path[i - 1]][path[i]]
+        return total
+
+
 class Four(Abstract):
     def load(self, graph, k, b):
         return
