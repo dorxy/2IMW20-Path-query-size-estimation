@@ -64,50 +64,68 @@ class BruteForce(Abstract):
 
 class Language(Abstract):
     def load(self, graph, k, b):
+        # Set up an empty summary
         self._summary = dict()
-        # Find and count all edge types
+
+        # First pass over the edges, counting the edge types and counting the options for all nodes
         counts = dict()
-        for n in graph:
-            if n[1] in counts:
-                counts[n[1]] += 1
+        node_options = dict()
+        for t in graph:
+            # Count the edge type
+            if t[1] in counts:
+                counts[t[1]] += 1
             else:
-                counts[n[1]] = 1
+                counts[t[1]] = 1
+
+            # For the source node, count the forward option
+            if t[0] not in node_options:
+                node_options[t[0]] = dict()
+            if ('+', t[1]) not in node_options[t[0]]:
+                node_options[t[0]][('+', t[1])] = 1
+            else:
+                node_options[t[0]][('+', t[1])] += 1
+
+            # For the target node, count the backward option
+            if t[2] not in node_options:
+                node_options[t[2]] = dict()
+            if ('-', t[1]) not in node_options[t[2]]:
+                node_options[t[2]][('-', t[1])] = 1
+            else:
+                node_options[t[2]][('-', t[1])] += 1
+
+        # Add the counts to the summary, we need these for the queries
         self._summary['counts'] = counts
 
-        # Calculate potential follow-up edges, taking the edges both forward and backward
+        # Second pass
         table = dict()
-        for type in counts:
-            forward = dict()
-            backward = dict()
-            for t1 in graph:
-                if t1[1] == type:
-                    for t2 in graph:
-                        if t2[0] == t1[2]:
-                            # Forward, Forward
-                            if ('+', t2[1]) in forward:
-                                forward[('+', t2[1])] += 1.0 / counts[type]
-                            else:
-                                forward[('+', t2[1])] = 1.0 / counts[type]
-                        if t2[2] == t1[2]:
-                            # Forward, Backward
-                            if ('-', t2[1]) in forward:
-                                forward[('-', t2[1])] += 1.0 / counts[type]
-                            else:
-                                forward[('-', t2[1])] = 1.0 / counts[type]
-                        if t2[0] == t1[0]:
-                            # Backward, Forward
-                            if ('+', t2[1]) in backward:
-                                backward[('+', t2[1])] += 1.0 / counts[type]
-                            else:
-                                backward[('+', t2[1])] = 1.0 / counts[type]
-                        if t2[2] == t1[0]:
-                            # Backward, Backward
-                            if ('-', t2[1]) in backward:
-                                backward[('-', t2[1])] += 1.0 / counts[type]
-                            else:
-                                backward[('-', t2[1])] = 1.0 / counts[type]
-            table[('+', type)] = forward
-            table[('-', type)] = backward
+        for t in graph:
+            # Make sure the edge type has both entries in the table
+            if ('+', t[1]) not in table:
+                table[('+', t[1])] = dict()
+                table[('-', t[1])] = dict()
+
+            # Add options of taking this edge forward to the options of taking this edge type forward
+            for o in node_options[t[2]]:
+                if o not in table[('+', t[1])]:
+                    table[('+', t[1])][o] = node_options[t[2]][o]
+                else:
+                    table[('+', t[1])][o] += node_options[t[2]][o]
+
+            # Do the same for taking this edge backward
+            for o in node_options[t[0]]:
+                if o not in table[('-', t[1])]:
+                    table[('-', t[1])][o] = node_options[t[0]][o]
+                else:
+                    table[('-', t[1])][o] += node_options[t[0]][o]
+
+        # Divide options by counts
+        for c in counts:
+            for t in table[('+', c)]:
+                table[('+', c)][t] *= 1.0/counts[c]
+            for t in table[('-', c)]:
+                table[('-', c)][t] *= 1.0/counts[c]
+
+        # Add the edge type options table to the summary
         self._summary['table'] = table
 
     def estimate(self, path):
