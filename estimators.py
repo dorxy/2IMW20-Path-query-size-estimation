@@ -80,17 +80,17 @@ class BruteForce(Abstract):
                 self._summary[edge[2]] = set()
             self._summary[edge[2]].add(edge)
 
-    def estimate(self, path, root=None):
-        # Base case
-        if len(path) == 0:
-            return 1
-
-        count = 0
+    def estimate(self, path, root=None, current=None):
         # No root given, must be initial call. Run recursive on all nodes.
         if root is None:
+            result = set()
             for node in self._summary:
-                count += self.estimate(path, node)
-            return count
+                result |= self.estimate(path, node, node)
+            return len(result)
+
+        # Base case
+        if len(path) == 0:
+            return {(root, current)}
 
         # We have a root and at least one edge in path
         # Determine which direction to look at when we find matching edges
@@ -100,10 +100,11 @@ class BruteForce(Abstract):
             direction = 0
 
         # Check all edges associated with this node
-        for edge in self._summary[root]:
-            if edge[1] == path[0][1] and edge[2 - direction] == root:
-                count += self.estimate(path[1:], edge[direction])
-        return count
+        result = set()
+        for edge in self._summary[current]:
+            if edge[1] == path[0][1] and edge[2 - direction] == current:
+                result |= self.estimate(path[1:], root, edge[direction])
+        return result
 
 
 class Language(Abstract):
