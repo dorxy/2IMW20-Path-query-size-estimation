@@ -202,7 +202,7 @@ class Average(Abstract):
         bf = BruteForce()
         bf.load(graph, k, b)
         self.initialize_summary(graph, k)
-        self.save_averages(paths, bf)
+        self.save_summary(paths, bf)
 
     def initialize_summary(self, graph, k):
         self._summary = dict()
@@ -215,19 +215,19 @@ class Average(Abstract):
         for i in range(1, k + 1):
             self._summary['l'][i] = []
 
-    def average_summary(self):
+    def process_summary(self):
         for key, value in self._summary.iteritems():
             for k, v in value.iteritems():
                 self._summary[key][k] = (sum(self._summary[key][k]) / len(self._summary[key][k])) if len(self._summary[key][k]) > 0 else 0
 
-    def save_averages(self, paths, bf):
+    def save_summary(self, paths, bf):
         for i in paths:
             forward = [('+', x) for x in i]
             exact = bf.estimate(forward)
             self._summary['s'][i[0]].append(exact)
             self._summary['e'][i[-1]].append(exact)
             self._summary['l'][len(i)].append(exact)
-        self.average_summary()
+        self.process_summary()
 
     def relations(self, graph):
         # Determine all types of relations present in the graph
@@ -247,3 +247,20 @@ class Average(Abstract):
             return (self._summary['s'][path[0][1]] + self._summary['e'][path[-1][1]] + self._summary['l'][len(path)]) / 3
         except KeyError:
             return 0
+
+
+class Median(Average):
+    @staticmethod
+    def median(lst):
+        lst = sorted(lst)
+        if len(lst) < 1:
+            return None
+        if len(lst) % 2 == 1:
+            return lst[((len(lst) + 1) / 2) - 1]
+        else:
+            return float(sum(lst[(len(lst) / 2) - 1:(len(lst) / 2) + 1])) / 2.0
+
+    def process_summary(self):
+        for key, value in self._summary.iteritems():
+            for k, v in value.iteritems():
+                self._summary[key][k] = self.median(self._summary[key][k])
