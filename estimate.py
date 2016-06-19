@@ -22,7 +22,7 @@ parser.add_argument('--verbose', default=False, const=True, nargs='?', help='if 
 estimator = None
 bruteForce = estimators.BruteForce()
 estimation_times = []
-estimation_accuracies = []
+estimation_errors = []
 verbose = False
 
 
@@ -55,16 +55,16 @@ def process_line(line, output=False):
     estimation_time = time.time() - ts
     estimation_times.append(max(0, estimation_time) * 1000)
 
-    # Determine the accuracy
+    # Determine the percent error
     actual_result = bruteForce.estimate(path)
     if actual_result == 0:
-        accuracy = 0 if actual_result == estimation else 100
+        error = 0 if actual_result == estimation else 100
     else:
-        accuracy = 100 * abs(float(estimation) - actual_result) / actual_result
-    estimation_accuracies.append(accuracy)
+        error = 100 * abs(float(estimation) - actual_result) / actual_result
+    estimation_errors.append(error)
 
     if verbose or output:
-        print "%s\t%s\t%s\t%s\t%s" % (line, estimation, actual_result, accuracy, estimation_time * 1000)
+        print "%s\t%s\t%s\t%s\t%s" % (line, estimation, actual_result, error, estimation_time * 1000)
 
     return True
 
@@ -118,10 +118,10 @@ if __name__ == "__main__":
         continue
 
     average_times = (sum(estimation_times) / float(len(estimation_times))) if len(estimation_times) > 0 else 0
-    average_accuracy = (sum(estimation_accuracies) / float(len(estimation_accuracies))) if len(estimation_accuracies) > 0 else 0
-    average_square_accuracy = (sum([i ** 2 for i in estimation_accuracies]) / float(len(estimation_accuracies))) if len(estimation_accuracies) > 0 else 0
+    average_error = (sum(estimation_errors) / float(len(estimation_errors))) if len(estimation_errors) > 0 else 0
+    average_square_error = (sum([i ** 2 for i in estimation_errors]) / float(len(estimation_errors))) if len(estimation_errors) > 0 else 0
 
-    print "# Average of estimations\n%s\t milliseconds\n%s\taccuracy\n%s\tsquare accuracy" % (average_times, average_accuracy, average_square_accuracy)
+    print "# Average of estimations\n%s\t milliseconds\n%s\tpercent error\n%s\tsquare error" % (average_times, average_error, average_square_error)
 
 else:
     raise RuntimeError('This file can only be run as a top-level script')
