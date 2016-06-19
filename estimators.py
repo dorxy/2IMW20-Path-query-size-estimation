@@ -1,6 +1,47 @@
 from abc import ABCMeta, abstractmethod
 from itertools import combinations
-import sys
+from sys import getsizeof
+from itertools import chain
+from collections import deque
+
+
+# Source: http://code.activestate.com/recipes/577504-compute-memory-footprint-of-an-object-and-its-cont/
+def total_size(o, handlers={}):
+    """ Returns the approximate memory footprint an object and all of its contents.
+
+    Automatically finds the contents of the following builtin containers and
+    their subclasses:  tuple, list, deque, dict, set and frozenset.
+    To search other containers, add handlers to iterate over their contents:
+
+        handlers = {SomeContainerClass: iter,
+                    OtherContainerClass: OtherContainerClass.get_elements}
+
+    """
+    dict_handler = lambda d: chain.from_iterable(d.items())
+    all_handlers = {tuple: iter,
+                    list: iter,
+                    deque: iter,
+                    dict: dict_handler,
+                    set: iter,
+                    frozenset: iter,
+                    }
+    all_handlers.update(handlers)  # user handlers take precedence
+    seen = set()  # track which object id's have already been seen
+    default_size = getsizeof(0)  # estimate sizeof object without __sizeof__
+
+    def sizeof(o):
+        if id(o) in seen:  # do not double count the same object
+            return 0
+        seen.add(id(o))
+        s = getsizeof(o, default_size)
+
+        for typ, handler in all_handlers.items():
+            if isinstance(o, typ):
+                s += sum(map(sizeof, handler(o)))
+                break
+        return s
+
+    return sizeof(o)
 
 
 # Abstract class for estimators, each estimator
@@ -23,7 +64,7 @@ class Abstract:
         return self._summary
 
     def summary_size(self):
-        return sys.getsizeof(self._summary)
+        return total_size(self._summary)
 
 
 # BruteForce estimator
@@ -144,14 +185,6 @@ class Language(Abstract):
             total *= self._summary['table'][path[i - 1]][path[i]]
         return total
 
-    def summary_size(self):
-        size = sys.getsizeof(self._summary)
-        for sub in self._summary:
-            size += sys.getsizeof(sub)
-        for sub in self._summary['table']:
-            size += sys.getsizeof(sub)
-        return size
-
 
 class Four(Abstract):
     def load(self, graph, k, b):
@@ -169,7 +202,7 @@ class Average(Abstract):
         bf = BruteForce()
         bf.load(graph, k, b)
         self.initialize_summary(graph, k)
-        self.save_averages(paths, bf)
+        self.save_summary(paths, bf)
 
     def initialize_summary(self, graph, k):
         self._summary = dict()
@@ -182,19 +215,19 @@ class Average(Abstract):
         for i in range(1, k + 1):
             self._summary['l'][i] = []
 
-    def average_summary(self):
+    def process_summary(self):
         for key, value in self._summary.iteritems():
             for k, v in value.iteritems():
                 self._summary[key][k] = (sum(self._summary[key][k]) / len(self._summary[key][k])) if len(self._summary[key][k]) > 0 else 0
 
-    def save_averages(self, paths, bf):
+    def save_summary(self, paths, bf):
         for i in paths:
             forward = [('+', x) for x in i]
             exact = bf.estimate(forward)
             self._summary['s'][i[0]].append(exact)
             self._summary['e'][i[-1]].append(exact)
             self._summary['l'][len(i)].append(exact)
-        self.average_summary()
+        self.process_summary()
 
     def relations(self, graph):
         # Determine all types of relations present in the graph
@@ -214,3 +247,20 @@ class Average(Abstract):
             return (self._summary['s'][path[0][1]] + self._summary['e'][path[-1][1]] + self._summary['l'][len(path)]) / 3
         except KeyError:
             return 0
+
+
+class Median(Average):
+    @staticmethod
+    def median(lst):
+        lst = sorted(lst)
+        if len(lst) < 1:
+            return None
+        if len(lst) % 2 == 1:
+            return lst[((len(lst) + 1) / 2) - 1]
+        else:
+            return float(sum(lst[(len(lst) / 2) - 1:(len(lst) / 2) + 1])) / 2.0
+
+    def process_summary(self):
+        for key, value in self._summary.iteritems():
+            for k, v in value.iteritems():
+                self._summary[key][k] = self.median(self._summary[key][k])
