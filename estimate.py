@@ -40,6 +40,11 @@ def generate_graph_summary(cli_arguments):
 def process_line(line, output=False):
     # Read the line into a path
     path = line.strip().split(' ')
+    if path[-2].isdigit():
+        actual_result = float(path[-1])
+        del path[-1]
+    else:
+        actual_result = False
     if len(path) == 0:
         if verbose:
             print 'Skipping badly formatted line: %s' % line
@@ -56,7 +61,10 @@ def process_line(line, output=False):
     estimation_times.append(max(0, estimation_time) * 1000)
 
     # Determine the percent error
-    actual_result = bruteForce.estimate(path)
+    if not actual_result and not isinstance(actual_result, float):
+        if verbose:
+            print 'Using brute force to get actual result', actual_result
+        actual_result = bruteForce.estimate(path)
     if actual_result == 0:
         error = 0 if actual_result == estimation else 100
     else:
