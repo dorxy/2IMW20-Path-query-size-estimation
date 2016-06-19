@@ -81,63 +81,29 @@ class BruteForce(Abstract):
             self._summary[edge[2]].add(edge)
 
     def estimate(self, path, root=None):
+        # Base case
         if len(path) == 0:
             return 1
+
         count = 0
+        # No root given, must be initial call. Run recursive on all nodes.
         if root is None:
-            if path[0][0] == '+':
-                for node in self._summary:
-                    for edge in self._summary[node]:
-                        if edge[1] == path[0][1]:
-                            count += self.estimate(path[1:], edge[2])
-            else:
-                for node in self._summary:
-                    for edge in self._summary[node]:
-                        if edge[1] == path[0][1]:
-                            count += self.estimate(path[1:], edge[0])
+            for node in self._summary:
+                count += self.estimate(path, node)
             return count
+
+        # We have a root and at least one edge in path
+        # Determine which direction to look at when we find matching edges
         if path[0][0] == '+':
-            for edge in self._summary[root]:
-                if edge[1] == path[0][1]:
-                    count += self.estimate(path[1:], edge[2])
+            direction = 2
         else:
-            for edge in self._summary[root]:
-                if edge[1] == path[0][1]:
-                    count += self.estimate(path[1:], edge[0])
+            direction = 0
+
+        # Check all edges associated with this node
+        for edge in self._summary[root]:
+            if edge[1] == path[0][1] and edge[2 - direction] == root:
+                count += self.estimate(path[1:], edge[direction])
         return count
-
-
-    #     paths = []
-    #     for e in path:
-    #         nodes = self.subset(e, [n[1] for n in nodes] if nodes is not None else None)
-    #         paths = self.add_to_paths(paths, nodes)
-    #     return len(set(paths))
-    #
-    # def add_to_paths(self, paths, nodes):
-    #     if len(paths) == 0:
-    #         return nodes
-    #     new_paths = []
-    #     for p in paths:
-    #         connections = [n[1] for n in nodes if n[0] == p[1]]
-    #         for c in connections:
-    #             new_paths.append((p[0], c))
-    #     return new_paths
-    #
-    # def subset(self, edge, nodes=None):
-    #     if edge[0] == '+':
-    #         return self.subset_forward(edge[1], nodes)
-    #     elif edge[0] == '-':
-    #         return self.subset_backward(edge[1], nodes)
-    #
-    # def subset_forward(self, edge, nodes):
-    #     if nodes is None:
-    #         return [(t[0], t[2]) for t in self._summary if t[1] == edge]
-    #     return [(t[0], t[2]) for t in self._summary if t[1] == edge and t[0] in nodes]
-    #
-    # def subset_backward(self, edge, nodes):
-    #     if nodes is None:
-    #         return [(t[2], t[0]) for t in self._summary if t[1] == edge]
-    #     return [(t[2], t[0]) for t in self._summary if t[1] == edge and t[2] in nodes]
 
 
 class Language(Abstract):
@@ -251,7 +217,8 @@ class Average(Abstract):
     def process_summary(self):
         for key, value in self._summary.iteritems():
             for k, v in value.iteritems():
-                self._summary[key][k] = (sum(self._summary[key][k]) / len(self._summary[key][k])) if len(self._summary[key][k]) > 0 else 0
+                self._summary[key][k] = (sum(self._summary[key][k]) / len(self._summary[key][k])) if len(
+                    self._summary[key][k]) > 0 else 0
 
     def save_summary(self, paths, bf):
         for i in paths:
@@ -277,7 +244,8 @@ class Average(Abstract):
         if len(path) not in self._summary['l']:
             raise Exception('This length has not been summarized!')
         try:
-            return (self._summary['s'][path[0][1]] + self._summary['e'][path[-1][1]] + self._summary['l'][len(path)]) / 3
+            return (
+                   self._summary['s'][path[0][1]] + self._summary['e'][path[-1][1]] + self._summary['l'][len(path)]) / 3
         except KeyError:
             return 0
 
