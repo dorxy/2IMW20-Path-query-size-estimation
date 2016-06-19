@@ -83,7 +83,10 @@ def listen():
         return False
 
     if os.path.isfile(input_line):
+        if verbose:
+            print 'Processing file with queries: ' + input_line
         process_file(input_line)
+        print 'Processed file ' + input_line
     else:
         process_line(input_line, True)
 
