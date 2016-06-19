@@ -28,7 +28,7 @@ verbose = False
 
 def generate_graph_summary(cli_arguments):
     # Load contents of graph data file into the estimator
-    graph = [line.rstrip().split(' ') for line in cli_arguments.file]
+    graph = set(tuple(line.rstrip().split(' ')) for line in cli_arguments.file)
     bruteForce.load(graph, cli_arguments.k, cli_arguments.b)
 
     ts = time.time()
