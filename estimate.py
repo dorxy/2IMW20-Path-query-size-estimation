@@ -34,7 +34,7 @@ def generate_graph_summary(cli_arguments):
     ts = time.time()
     estimator.load(graph, cli_arguments.k, cli_arguments.b)
     graph_summary_time = max(0, (time.time() - ts)) * 1000
-    print "# Graph summary generation bonus\n%s\tmilliseconds\n%s\tbytes" % (graph_summary_time, sys.getsizeof(estimator.summary()))
+    print "# Graph summary generation bonus\n%s\tmilliseconds\n%s\tbytes" % (graph_summary_time, estimator.summarySize())
 
 
 def process_line(line, output=False):

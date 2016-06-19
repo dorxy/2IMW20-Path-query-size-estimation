@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from itertools import combinations
+import sys
 
 
 # Abstract class for estimators, each estimator
@@ -20,6 +21,9 @@ class Abstract:
 
     def summary(self):
         return self._summary
+
+    def summary_size(self):
+        return sys.getsizeof(self._summary)
 
 
 # BruteForce estimator
@@ -121,9 +125,9 @@ class Language(Abstract):
         # Divide options by counts
         for c in counts:
             for t in table[('+', c)]:
-                table[('+', c)][t] *= 1.0/counts[c]
+                table[('+', c)][t] *= 1.0 / counts[c]
             for t in table[('-', c)]:
-                table[('-', c)][t] *= 1.0/counts[c]
+                table[('-', c)][t] *= 1.0 / counts[c]
 
         # Add the edge type options table to the summary
         self._summary['table'] = table
@@ -139,6 +143,15 @@ class Language(Abstract):
                 return 0
             total *= self._summary['table'][path[i - 1]][path[i]]
         return total
+
+    def summary_size(self):
+        size = sys.getsizeof(self._summary)
+        for sub in self._summary:
+            size += sys.getsizeof(sub)
+        for sub in self._summary['table']:
+            size += sys.getsizeof(sub)
+        print self._summary
+        return size
 
 
 class Four(Abstract):
@@ -199,6 +212,7 @@ class Average(Abstract):
         if len(path) not in self._summary['l']:
             raise Exception('This length has not been summarized!')
         try:
-            return (self._summary['s'][path[0][1]] + self._summary['e'][path[-1][1]] + self._summary['l'][len(path)]) / 3
+            return (
+                   self._summary['s'][path[0][1]] + self._summary['e'][path[-1][1]] + self._summary['l'][len(path)]) / 3
         except KeyError:
             return 0
