@@ -3,6 +3,7 @@ from itertools import combinations
 from sys import getsizeof
 from itertools import chain
 from collections import deque
+from math import modf
 
 
 # Source: http://code.activestate.com/recipes/577504-compute-memory-footprint-of-an-object-and-its-cont/
@@ -264,3 +265,30 @@ class Median(Average):
         for key, value in self._summary.iteritems():
             for k, v in value.iteritems():
                 self._summary[key][k] = self.median(self._summary[key][k])
+
+
+class TrimmedAverage(Average):
+    @staticmethod
+    def percent_tmean(data, pcent):
+        # make sure data is a list
+        dc = list(data)
+        # find the number of items
+        n = len(dc)
+        # sort the list
+        dc.sort()
+        # get the proportion to trim
+        p = pcent / 100.0
+        k = n * p
+        # print "n = %i\np = %.3f\nk = %.3f" % ( n,p,k )
+        # get the decimal and integer parts of k
+        dec_part, int_part = modf(k)
+        # get an index we can use
+        index = int(int_part)
+        # trim down the list
+        dc = dc[index: index * -1]
+        return (sum(dc) / (n - 2.0 * k)) if (n - 2.0 * k) != 0 else 0
+
+    def process_summary(self):
+        for key, value in self._summary.iteritems():
+            for k, v in value.iteritems():
+                self._summary[key][k] = self.percent_tmean(self._summary[key][k], 10)
