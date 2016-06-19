@@ -150,7 +150,6 @@ class Language(Abstract):
             size += sys.getsizeof(sub)
         for sub in self._summary['table']:
             size += sys.getsizeof(sub)
-        print self._summary
         return size
 
 
