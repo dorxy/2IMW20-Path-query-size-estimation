@@ -185,7 +185,7 @@ class Average(Abstract):
     def average_summary(self):
         for key, value in self._summary.iteritems():
             for k, v in value.iteritems():
-                self._summary[key][k] = sum(self._summary[key][k]) / len(self._summary[key][k])
+                self._summary[key][k] = (sum(self._summary[key][k]) / len(self._summary[key][k])) if len(self._summary[key][k]) > 0 else 0
 
     def save_averages(self, paths, bf):
         for i in paths:
@@ -211,7 +211,6 @@ class Average(Abstract):
         if len(path) not in self._summary['l']:
             raise Exception('This length has not been summarized!')
         try:
-            return (
-                   self._summary['s'][path[0][1]] + self._summary['e'][path[-1][1]] + self._summary['l'][len(path)]) / 3
+            return (self._summary['s'][path[0][1]] + self._summary['e'][path[-1][1]] + self._summary['l'][len(path)]) / 3
         except KeyError:
             return 0
