@@ -71,41 +71,73 @@ class Abstract:
 # BruteForce estimator
 class BruteForce(Abstract):
     def load(self, graph, k, b):
-        self._summary = graph
+        self._summary = dict()
+        for edge in graph:
+            if edge[0] not in self._summary:
+                self._summary[edge[0]] = set()
+            self._summary[edge[0]].add(edge)
+            if edge[2] not in self._summary:
+                self._summary[edge[2]] = set()
+            self._summary[edge[2]].add(edge)
 
-    def estimate(self, path):
-        nodes = None
-        paths = []
-        for e in path:
-            nodes = self.subset(e, [n[1] for n in nodes] if nodes is not None else None)
-            paths = self.add_to_paths(paths, nodes)
-        return len(set(paths))
+    def estimate(self, path, root=None):
+        if len(path) == 0:
+            return 1
+        count = 0
+        if root is None:
+            if path[0][0] == '+':
+                for node in self._summary:
+                    for edge in self._summary[node]:
+                        if edge[1] == path[0][1]:
+                            count += self.estimate(path[1:], edge[2])
+            else:
+                for node in self._summary:
+                    for edge in self._summary[node]:
+                        if edge[1] == path[0][1]:
+                            count += self.estimate(path[1:], edge[0])
+            return count
+        if path[0][0] == '+':
+            for edge in self._summary[root]:
+                if edge[1] == path[0][1]:
+                    count += self.estimate(path[1:], edge[2])
+        else:
+            for edge in self._summary[root]:
+                if edge[1] == path[0][1]:
+                    count += self.estimate(path[1:], edge[0])
+        return count
 
-    def add_to_paths(self, paths, nodes):
-        if len(paths) == 0:
-            return nodes
-        new_paths = []
-        for p in paths:
-            connections = [n[1] for n in nodes if n[0] == p[1]]
-            for c in connections:
-                new_paths.append((p[0], c))
-        return new_paths
 
-    def subset(self, edge, nodes=None):
-        if edge[0] == '+':
-            return self.subset_forward(edge[1], nodes)
-        elif edge[0] == '-':
-            return self.subset_backward(edge[1], nodes)
-
-    def subset_forward(self, edge, nodes):
-        if nodes is None:
-            return [(t[0], t[2]) for t in self._summary if t[1] == edge]
-        return [(t[0], t[2]) for t in self._summary if t[1] == edge and t[0] in nodes]
-
-    def subset_backward(self, edge, nodes):
-        if nodes is None:
-            return [(t[2], t[0]) for t in self._summary if t[1] == edge]
-        return [(t[2], t[0]) for t in self._summary if t[1] == edge and t[2] in nodes]
+    #     paths = []
+    #     for e in path:
+    #         nodes = self.subset(e, [n[1] for n in nodes] if nodes is not None else None)
+    #         paths = self.add_to_paths(paths, nodes)
+    #     return len(set(paths))
+    #
+    # def add_to_paths(self, paths, nodes):
+    #     if len(paths) == 0:
+    #         return nodes
+    #     new_paths = []
+    #     for p in paths:
+    #         connections = [n[1] for n in nodes if n[0] == p[1]]
+    #         for c in connections:
+    #             new_paths.append((p[0], c))
+    #     return new_paths
+    #
+    # def subset(self, edge, nodes=None):
+    #     if edge[0] == '+':
+    #         return self.subset_forward(edge[1], nodes)
+    #     elif edge[0] == '-':
+    #         return self.subset_backward(edge[1], nodes)
+    #
+    # def subset_forward(self, edge, nodes):
+    #     if nodes is None:
+    #         return [(t[0], t[2]) for t in self._summary if t[1] == edge]
+    #     return [(t[0], t[2]) for t in self._summary if t[1] == edge and t[0] in nodes]
+    #
+    # def subset_backward(self, edge, nodes):
+    #     if nodes is None:
+    #         return [(t[2], t[0]) for t in self._summary if t[1] == edge]
+    #     return [(t[2], t[0]) for t in self._summary if t[1] == edge and t[2] in nodes]
 
 
 class Language(Abstract):
